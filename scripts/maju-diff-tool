@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# maju-diff-tool: External diff editor for jj squash/split --tool integration
+#
+# jj invokes this as: maju-diff-tool <left_dir> <right_dir>
+#   - left_dir:  the "before" state (read-only reference)
+#   - right_dir: the "after" state (editable — jj applies this)
+#
+# A manifest file (JSON) at $MAJU_MANIFEST describes which hunks to include.
+# Manifest format:
+# {
+#   "mode": "include",    -- "include" = only apply listed hunks, "exclude" = apply all except listed
+#   "files": {
+#     "src/foo.lua": {
+#       "action": "full"  -- include entire file
+#     },
+#     "src/bar.lua": {
+#       "action": "hunks",
+#       "hunks": [        -- 0-indexed line ranges within the diff
+#         {"from": 5, "to": 12},
+#         {"from": 20, "to": 30}
+#       ]
+#     }
+#   }
+# }
+#
+# When mode is "include":
+#   - For files NOT in the manifest: copy left (before) to right (revert changes)
+#   - For files in manifest with "full": leave right as-is (keep all changes)
+#   - For files in manifest with "hunks": selectively apply only specified hunks
+#
+# When no manifest is set ($MAJU_MANIFEST is empty), this is a no-op
+# (leaves right/ as jj set it up, which means all changes are kept).
+
+set -euo pipefail
+
+LEFT="$1"
+RIGHT="$2"
+
+if [ -z "${MAJU_MANIFEST:-}" ] || [ ! -f "${MAJU_MANIFEST:-}" ]; then
+  # No manifest — keep everything as-is (equivalent to accepting all changes)
+  exit 0
+fi
+
+# We need jq to parse the manifest
+if ! command -v jq &>/dev/null; then
+  echo "maju-diff-tool: jq is required but not found" >&2
+  exit 1
+fi
+
+MANIFEST="$MAJU_MANIFEST"
+MODE=$(jq -r '.mode // "include"' "$MANIFEST")
+
+if [ "$MODE" = "include" ]; then
+  # For each file in right/, check if it's in the manifest
+  find "$RIGHT" -type f | while read -r right_file; do
+    rel_path="${right_file#$RIGHT/}"
+    left_file="$LEFT/$rel_path"
+
+    action=$(jq -r --arg f "$rel_path" '.files[$f].action // "none"' "$MANIFEST")
+
+    case "$action" in
+      "full")
+        # Keep right as-is — this file's changes are included
+        ;;
+      "none")
+        # Not in manifest — revert to left (remove this file's changes)
+        if [ -f "$left_file" ]; then
+          cp "$left_file" "$right_file"
+        else
+          # File was added and not in manifest — remove it
+          rm "$right_file"
+        fi
+        ;;
+      "hunks")
+        # Partial hunk application — apply only specified hunks
+        # For now, fall back to full inclusion (hunk-level requires patch logic)
+        # TODO: Implement line-level hunk selection
+        ;;
+    esac
+  done
+
+  # Handle files that exist in left but not right (deleted files not in manifest)
+  find "$LEFT" -type f | while read -r left_file; do
+    rel_path="${left_file#$LEFT/}"
+    right_file="$RIGHT/$rel_path"
+
+    if [ ! -f "$right_file" ]; then
+      action=$(jq -r --arg f "$rel_path" '.files[$f].action // "none"' "$MANIFEST")
+      if [ "$action" = "none" ]; then
+        # Deletion not in manifest — restore the file
+        mkdir -p "$(dirname "$right_file")"
+        cp "$left_file" "$right_file"
+      fi
+      # If action is "full", the deletion is intentional — leave file absent
+    fi
+  done
+fi
+
+exit 0
