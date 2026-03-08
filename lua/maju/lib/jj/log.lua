@@ -68,6 +68,18 @@ function M.get_revision(revset)
 end
 
 ---@param revset string
+---@param callback fun(entry: LogEntry|nil)
+function M.get_revision_async(revset, callback)
+  jj.log.no_graph.revisions(revset).template(TEMPLATE).call_async(function(result)
+    if result.code ~= 0 or #result.stdout == 0 then
+      callback(nil)
+    else
+      callback(M.parse_entry(result.stdout[1]))
+    end
+  end)
+end
+
+---@param revset string
 ---@return LogEntry[]
 function M.get_revisions(revset)
   local result = jj.log.no_graph.revisions(revset).template(TEMPLATE).call({ ignore_error = true })
@@ -85,12 +97,40 @@ function M.get_revisions(revset)
   return entries
 end
 
+---@param revset string
+---@param callback fun(entries: LogEntry[])
+function M.get_revisions_async(revset, callback)
+  jj.log.no_graph.revisions(revset).template(TEMPLATE).call_async(function(result)
+    if result.code ~= 0 then
+      callback({})
+      return
+    end
+
+    local entries = {}
+    for _, line in ipairs(result.stdout) do
+      local entry = M.parse_entry(line)
+      if entry then
+        table.insert(entries, entry)
+      end
+    end
+    callback(entries)
+  end)
+end
+
 ---@param limit? integer
 ---@return LogEntry[]
 function M.get_recent(limit)
   limit = limit or 10
   local revset = string.format("ancestors(@-, %d)", limit)
   return M.get_revisions(revset)
+end
+
+---@param limit integer|nil
+---@param callback fun(entries: LogEntry[])
+function M.get_recent_async(limit, callback)
+  limit = limit or 10
+  local revset = string.format("ancestors(@-, %d)", limit)
+  M.get_revisions_async(revset, callback)
 end
 
 return M

@@ -202,6 +202,11 @@ function Renderer:_render_child(child)
     self.index:add_item(child.options.item, child.position.row_start, child.position.row_end)
   end
 
+  if child.options.hunk then
+    child.options.hunk.first = child.position.row_start
+    child.options.hunk.last = child.position.row_end
+  end
+
   local line_hl = child:get_line_highlight()
   if line_hl then
     table.insert(self.buffer.line_highlight, { #self.buffer.line - 1, line_hl })

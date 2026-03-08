@@ -2,6 +2,7 @@ local Buffer = require("maju.lib.buffer")
 local config = require("maju.config")
 local ui = require("maju.buffers.status.ui")
 local repository = require("maju.lib.jj.repository")
+local notification = require("maju.lib.notification")
 
 ---@class StatusBuffer
 ---@field buffer Buffer|nil
@@ -9,6 +10,8 @@ local repository = require("maju.lib.jj.repository")
 ---@field fold_state table|nil
 ---@field cursor_state number|nil
 ---@field view_state table|nil
+---@field _refreshing boolean
+---@field _debounce_timer uv_timer_t|nil
 local M = {}
 M.__index = M
 
@@ -28,6 +31,8 @@ function M.open(root, kind)
     fold_state = nil,
     cursor_state = nil,
     view_state = nil,
+    _refreshing = false,
+    _debounce_timer = nil,
   }, M)
 
   M.instance = instance
@@ -90,13 +95,50 @@ function M:refresh()
     return
   end
 
+  -- Prevent overlapping refreshes
+  if self._refreshing then
+    return
+  end
+
+  -- Cancel pending debounce timer
+  if self._debounce_timer then
+    self._debounce_timer:stop()
+    self._debounce_timer:close()
+    self._debounce_timer = nil
+  end
+
+  -- Debounce: delay 100ms to coalesce rapid refresh calls
+  self._debounce_timer = vim.uv.new_timer()
+  self._debounce_timer:start(100, 0, vim.schedule_wrap(function()
+    self._debounce_timer = nil
+    self:_do_refresh()
+  end))
+end
+
+function M:_do_refresh()
+  if not self.buffer or self._refreshing then
+    return
+  end
+
+  self._refreshing = true
+
   local cursor = self.buffer.ui:get_cursor_location()
   local view = self.buffer:save_view()
 
-  repository.refresh(self.root)
-  self:redraw(cursor, view)
+  notification.info("Refreshing...")
 
-  vim.api.nvim_exec_autocmds("User", { pattern = "MajuStatusRefreshed" })
+  repository.refresh_async(self.root, function()
+    -- Ensure buffer is still valid
+    if not self.buffer then
+      self._refreshing = false
+      return
+    end
+
+    self:redraw(cursor, view)
+
+    vim.api.nvim_exec_autocmds("User", { pattern = "MajuStatusRefreshed" })
+    self._refreshing = false
+  end)
 end
 
 ---@param cursor CursorLocation|nil
@@ -123,6 +165,12 @@ function M:redraw(cursor, view)
 end
 
 function M:close()
+  if self._debounce_timer then
+    self._debounce_timer:stop()
+    self._debounce_timer:close()
+    self._debounce_timer = nil
+  end
+
   if self.buffer then
     self.fold_state = self.buffer.ui:get_fold_state()
     self.cursor_state = self.buffer:cursor_line()

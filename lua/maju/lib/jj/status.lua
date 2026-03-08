@@ -62,6 +62,20 @@ function M.get()
   }
 end
 
+---@param callback fun(result: {working_copy_changes: FileChange[], conflicts: string[]})
+function M.get_async(callback)
+  jj.status.call_async(function(result)
+    if result.code ~= 0 then
+      callback({ working_copy_changes = {}, conflicts = {} })
+    else
+      callback({
+        working_copy_changes = M.parse_changes(result.stdout),
+        conflicts = M.parse_conflicts(result.stdout),
+      })
+    end
+  end)
+end
+
 ---@param revision string
 ---@return FileChange[]
 function M.get_parent_changes(revision)
@@ -70,6 +84,18 @@ function M.get_parent_changes(revision)
     return {}
   end
   return M.parse_changes(result.stdout)
+end
+
+---@param revision string
+---@param callback fun(changes: FileChange[])
+function M.get_parent_changes_async(revision, callback)
+  jj.diff.summary.revision(revision).call_async(function(result)
+    if result.code ~= 0 then
+      callback({})
+    else
+      callback(M.parse_changes(result.stdout))
+    end
+  end)
 end
 
 return M

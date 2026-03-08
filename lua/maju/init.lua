@@ -23,6 +23,11 @@ end
 
 ---@param kind? string
 function M.open(kind)
+  if vim.fn.executable("jj") ~= 1 then
+    vim.notify("jj not found on PATH", vim.log.levels.ERROR)
+    return
+  end
+
   local config = require("maju.config")
 
   local root = M.find_root()

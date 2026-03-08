@@ -57,7 +57,12 @@ local function build_kind(header)
   local header_count = #header
 
   if header_count >= 4 and header[2]:match("^similarity index") then
-    kind = "renamed"
+    -- Check for copy vs rename
+    if header[3]:match("^copy from") then
+      kind = "copied"
+    else
+      kind = "renamed"
+    end
     info = { header[3], header[4] }
   elseif header_count == 4 then
     kind = "modified"
@@ -76,6 +81,8 @@ local function build_file(header, kind)
     return header[3]:match("%-%-%- ./(.*)")
   elseif kind == "renamed" then
     return ("%s -> %s"):format(header[3]:match("rename from (.*)"), header[4]:match("rename to (.*)"))
+  elseif kind == "copied" then
+    return ("%s -> %s"):format(header[3]:match("copy from (.*)"), header[4]:match("copy to (.*)"))
   elseif kind == "new file" then
     return header[5]:match("%+%+%+ b/(.*)")
   elseif kind == "deleted file" then

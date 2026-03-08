@@ -11,27 +11,27 @@ The MVP delivers a functional daily-driver workflow: status buffer with inline d
 Priority fixes to make the MVP solid for daily use.
 
 ### Partial Hunk Operations
-- [ ] Hunk-level squash: select a single hunk with cursor on it, press `S` — squash only that hunk via `jj squash --tool`
-- [ ] Visual-line partial squash: select specific `+`/`-` lines within a hunk, press `S` — squash only those lines
-- [ ] Same for unsquash (`U`) and restore (`x`) at hunk and line granularity
-- [ ] Wire up `scripts/maju-diff-tool` manifest generation from `item_hunks()` selection data
-- [ ] Implement line-level hunk selection in the diff tool (currently only full-file)
+- [x] Hunk-level squash: select a single hunk with cursor on it, press `S` — squash only that hunk via `jj squash --tool`
+- [x] Visual-line partial squash: select specific `+`/`-` lines within a hunk, press `S` — squash only those lines
+- [x] Same for unsquash (`U`) and restore (`x`) at hunk and line granularity
+- [x] Wire up `scripts/maju-diff-tool` manifest generation from `item_hunks()` selection data
+- [x] Implement line-level hunk selection in the diff tool (currently only full-file)
 
 ### Direct Working Copy Manipulation (for Restore)
-- [ ] For `x` (restore/discard): read parent content via `jj file show -r @- <file>`, apply reverse of selected hunks directly to disk
-- [ ] This avoids the `--tool` overhead for simple discard operations
+- [x] For `x` (restore/discard): read parent content via `jj file show -r @- <file>`, apply reverse of selected hunks directly to disk
+- [x] This avoids the `--tool` overhead for simple discard operations
 
 ### Error Handling & Edge Cases
-- [ ] Handle immutable revisions — check `is_immutable()` before squash/edit/abandon and show clear error
-- [ ] Handle merge commits (multiple parents) — currently assumes single parent
-- [ ] Handle empty working copy gracefully
-- [ ] Handle missing jj binary with clear error message
-- [ ] Handle renamed/copied files in diff parsing
+- [x] Handle immutable revisions — check `is_immutable()` before squash/edit/abandon and show clear error
+- [x] Handle merge commits (multiple parents) — currently assumes single parent
+- [x] Handle empty working copy gracefully
+- [x] Handle missing jj binary with clear error message
+- [x] Handle renamed/copied files in diff parsing
 
 ### Async Refresh
-- [ ] Make `repository.refresh()` async — currently blocks UI during data fetch
-- [ ] Show loading indicator during refresh
-- [ ] Debounce rapid refreshes
+- [x] Make `repository.refresh()` async — currently blocks UI during data fetch
+- [x] Show loading indicator during refresh
+- [x] Debounce rapid refreshes
 
 ---
 

@@ -72,9 +72,11 @@ if [ "$MODE" = "include" ]; then
         fi
         ;;
       "hunks")
-        # Partial hunk application — apply only specified hunks
-        # For now, fall back to full inclusion (hunk-level requires patch logic)
-        # TODO: Implement line-level hunk selection
+        # Hunk-level application — use pre-patched content from Lua
+        content_file=$(jq -r --arg f "$rel_path" '.files[$f].content_file // ""' "$MANIFEST")
+        if [ -n "$content_file" ] && [ -f "$content_file" ]; then
+          cp "$content_file" "$right_file"
+        fi
         ;;
     esac
   done

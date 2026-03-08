@@ -200,8 +200,13 @@ function M.render(state)
   end
 
   if state.parents and #state.parents > 0 then
-    for _, parent in ipairs(state.parents) do
-      table.insert(items, Header(parent, "Parent (@-):", "@-"))
+    if #state.parents == 1 then
+      table.insert(items, Header(state.parents[1], "Parent (@-):", "@-"))
+    else
+      for i, parent in ipairs(state.parents) do
+        local label = string.format("Parent %d:", i)
+        table.insert(items, Header(parent, label, "@-"))
+      end
     end
   end
 
@@ -227,6 +232,9 @@ function M.render(state)
       })
     )
     table.insert(items, EmptyLine())
+  else
+    table.insert(items, row { text.highlight("MajuSubtleText")("No working copy changes") })
+    table.insert(items, EmptyLine())
   end
 
   -- Parent changes section
@@ -244,7 +252,7 @@ function M.render(state)
         end)),
       }, {
         foldable = true,
-        folded = false,
+        folded = true,
         section = "parent",
       })
     )

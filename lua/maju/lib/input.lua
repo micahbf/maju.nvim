@@ -1,24 +1,22 @@
 local M = {}
 
 ---@param prompt string
----@param opts? {default?: string, separator?: string, cancel?: string, completion?: function}
+---@param opts? {default?: string, separator?: string, cancel?: string, completion?: string}
 ---@return string|nil
 function M.get_user_input(prompt, opts)
   opts = opts or {}
   local sep = opts.separator or ": "
-  local result
 
-  vim.ui.input({
+  local ok, result = pcall(vim.fn.input, {
     prompt = prompt .. sep,
     default = opts.default or "",
     completion = opts.completion,
-  }, function(input)
-    if input == nil then
-      result = opts.cancel
-    else
-      result = input
-    end
-  end)
+    cancelreturn = vim.NIL,
+  })
+
+  if not ok or result == vim.NIL then
+    return opts.cancel
+  end
 
   return result
 end

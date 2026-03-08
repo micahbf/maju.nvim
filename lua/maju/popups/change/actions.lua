@@ -37,6 +37,11 @@ function M.edit_change(popup)
     return
   end
 
+  if change.is_immutable(rev) then
+    notification.warn("Cannot edit: revision is immutable")
+    return
+  end
+
   local result = change.edit(rev)
   if result.success then
     notification.info("Now editing " .. rev)
@@ -68,6 +73,11 @@ function M.describe_change(popup)
 end
 
 function M.abandon_change(popup)
+  if change.is_immutable("@") then
+    notification.warn("Cannot abandon: working copy revision is immutable")
+    return
+  end
+
   local confirmed = input.get_confirmation("Abandon working copy change?")
   if not confirmed then
     return

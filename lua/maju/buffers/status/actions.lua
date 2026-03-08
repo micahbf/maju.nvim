@@ -1,6 +1,7 @@
 local notification = require("maju.lib.notification")
 local input = require("maju.lib.input")
 local squash = require("maju.lib.jj.squash")
+local repository = require("maju.lib.jj.repository")
 
 local M = {}
 
@@ -36,6 +37,55 @@ local function collect_filenames(items)
     end
   end
   return names
+end
+
+--- Check if parent is immutable and show warning for squash operations
+---@param section_name string
+---@return boolean true if blocked
+local function check_immutable(section_name)
+  if section_name == "working_copy" and repository.state.parent_immutable then
+    notification.warn("Cannot squash: parent revision is immutable")
+    return true
+  end
+  if section_name == "parent" and repository.state.parent_immutable then
+    notification.warn("Cannot unsquash: parent revision is immutable")
+    return true
+  end
+  return false
+end
+
+--- Check if this is a merge commit and block squash operations
+---@return boolean true if blocked
+local function check_merge()
+  if #repository.state.parents > 1 then
+    notification.warn("Squash on merge commits not yet supported")
+    return true
+  end
+  return false
+end
+
+--- Determine operation context: file-level or hunk-level
+---@param buffer Buffer
+---@return {scope: string, item: table|nil, hunk: table|nil, section_name: string|nil}
+local function get_operation_context(buffer)
+  local hunk_or_file = buffer.ui:get_hunk_or_filename_under_cursor()
+  local item = buffer.ui:get_item_under_cursor()
+  local section = buffer.ui:get_current_section()
+  local section_name = section and section.options.section
+
+  local hunk = hunk_or_file and hunk_or_file.hunk
+  local scope = "file"
+
+  if hunk and item and rawget(item, "diff") then
+    scope = "hunk"
+  end
+
+  return {
+    scope = scope,
+    item = item,
+    hunk = hunk,
+    section_name = section_name,
+  }
 end
 
 -- Toggle fold under cursor
@@ -129,19 +179,30 @@ end
 
 -- Squash selected file/hunk from @ to @- (normal mode)
 function M.squash(buffer)
-  local item, section_name = get_item_and_section(buffer)
-  if not item or not item.name then
+  local ctx = get_operation_context(buffer)
+  if not ctx.item or not ctx.item.name then
     return
   end
 
-  if section_name ~= "working_copy" then
+  if ctx.section_name ~= "working_copy" then
     notification.warn("Can only squash from working copy changes")
     return
   end
 
-  local result = squash.squash_files({ item.name })
+  if check_immutable(ctx.section_name) or check_merge() then
+    return
+  end
+
+  local result
+  if ctx.scope == "hunk" and ctx.hunk then
+    result = squash.squash_hunks(ctx.item.name, { ctx.hunk }, ctx.item.diff)
+  else
+    result = squash.squash_files({ ctx.item.name })
+  end
+
   if result.success then
-    notification.info("Squashed: " .. item.name)
+    local label = ctx.scope == "hunk" and "Squashed hunk: " or "Squashed: "
+    notification.info(label .. ctx.item.name)
     refresh()
   else
     notification.error("Squash failed: " .. (result.error or "unknown"))
@@ -150,45 +211,64 @@ end
 
 -- Unsquash selected file/hunk from @- back to @ (normal mode)
 function M.unsquash(buffer)
-  local item, section_name = get_item_and_section(buffer)
-  if not item or not item.name then
+  local ctx = get_operation_context(buffer)
+  if not ctx.item or not ctx.item.name then
     return
   end
 
-  if section_name ~= "parent" then
+  if ctx.section_name ~= "parent" then
     notification.warn("Can only unsquash from parent changes")
     return
   end
 
-  local result = squash.unsquash_files({ item.name })
+  if check_immutable(ctx.section_name) or check_merge() then
+    return
+  end
+
+  local result
+  if ctx.scope == "hunk" and ctx.hunk then
+    result = squash.unsquash_hunks(ctx.item.name, { ctx.hunk }, ctx.item.diff)
+  else
+    result = squash.unsquash_files({ ctx.item.name })
+  end
+
   if result.success then
-    notification.info("Unsquashed: " .. item.name)
+    local label = ctx.scope == "hunk" and "Unsquashed hunk: " or "Unsquashed: "
+    notification.info(label .. ctx.item.name)
     refresh()
   else
     notification.error("Unsquash failed: " .. (result.error or "unknown"))
   end
 end
 
--- Restore/discard selected file (normal mode)
+-- Restore/discard selected file or hunk (normal mode)
 function M.restore(buffer)
-  local item, section_name = get_item_and_section(buffer)
-  if not item or not item.name then
+  local ctx = get_operation_context(buffer)
+  if not ctx.item or not ctx.item.name then
     return
   end
 
-  if section_name ~= "working_copy" then
+  if ctx.section_name ~= "working_copy" then
     notification.warn("Can only restore working copy changes")
     return
   end
 
-  local confirmed = input.get_confirmation("Discard changes to " .. item.name .. "?")
+  local label = ctx.scope == "hunk" and "hunk in " or "changes to "
+  local confirmed = input.get_confirmation("Discard " .. label .. ctx.item.name .. "?")
   if not confirmed then
     return
   end
 
-  local result = squash.restore_files({ item.name })
+  local result
+  if ctx.scope == "hunk" and ctx.hunk then
+    local instance = status_instance()
+    result = squash.restore_hunks(instance.root, ctx.item.name, { ctx.hunk }, ctx.item.diff)
+  else
+    result = squash.restore_files({ ctx.item.name })
+  end
+
   if result.success then
-    notification.info("Restored: " .. item.name)
+    notification.info("Restored: " .. ctx.item.name)
     refresh()
   else
     notification.error("Restore failed: " .. (result.error or "unknown"))
@@ -207,6 +287,42 @@ function M.v_squash(buffer)
     return
   end
 
+  if check_immutable("working_copy") or check_merge() then
+    return
+  end
+
+  -- Check if selection is within a single item with expanded diff (hunk-level)
+  if selection.item and rawget(selection.item, "diff") and selection.item.diff then
+    local partial = selection.first_line > selection.item.first
+    local hunks = buffer.ui:item_hunks(selection.item, selection.first_line, selection.last_line, partial)
+    if #hunks > 0 then
+      local result
+      if partial and #hunks == 1 then
+        result = squash.squash_hunks(selection.item.name, hunks, selection.item.diff, {
+          partial = true,
+          sel_from = hunks[1].from,
+          sel_to = hunks[1].to,
+        })
+      else
+        -- Extract raw hunks from SelectedHunk wrappers
+        local raw_hunks = {}
+        for _, h in ipairs(hunks) do
+          table.insert(raw_hunks, h.hunk or h)
+        end
+        result = squash.squash_hunks(selection.item.name, raw_hunks, selection.item.diff)
+      end
+
+      if result.success then
+        notification.info("Squashed hunk(s): " .. selection.item.name)
+        refresh()
+      else
+        notification.error("Squash failed: " .. (result.error or "unknown"))
+      end
+      return
+    end
+  end
+
+  -- Fall back to file-level squash
   local names = collect_filenames(selection.items)
   if #names == 0 then
     return
@@ -233,6 +349,41 @@ function M.v_unsquash(buffer)
     return
   end
 
+  if check_immutable("parent") or check_merge() then
+    return
+  end
+
+  -- Check if selection is within a single item with expanded diff (hunk-level)
+  if selection.item and rawget(selection.item, "diff") and selection.item.diff then
+    local partial = selection.first_line > selection.item.first
+    local hunks = buffer.ui:item_hunks(selection.item, selection.first_line, selection.last_line, partial)
+    if #hunks > 0 then
+      local result
+      if partial and #hunks == 1 then
+        result = squash.unsquash_hunks(selection.item.name, hunks, selection.item.diff, {
+          partial = true,
+          sel_from = hunks[1].from,
+          sel_to = hunks[1].to,
+        })
+      else
+        local raw_hunks = {}
+        for _, h in ipairs(hunks) do
+          table.insert(raw_hunks, h.hunk or h)
+        end
+        result = squash.unsquash_hunks(selection.item.name, raw_hunks, selection.item.diff)
+      end
+
+      if result.success then
+        notification.info("Unsquashed hunk(s): " .. selection.item.name)
+        refresh()
+      else
+        notification.error("Unsquash failed: " .. (result.error or "unknown"))
+      end
+      return
+    end
+  end
+
+  -- Fall back to file-level unsquash
   local names = collect_filenames(selection.items)
   if #names == 0 then
     return
@@ -259,6 +410,43 @@ function M.v_restore(buffer)
     return
   end
 
+  -- Check if selection is within a single item with expanded diff (hunk-level)
+  if selection.item and rawget(selection.item, "diff") and selection.item.diff then
+    local partial = selection.first_line > selection.item.first
+    local hunks = buffer.ui:item_hunks(selection.item, selection.first_line, selection.last_line, partial)
+    if #hunks > 0 then
+      local confirmed = input.get_confirmation("Discard selected hunk(s) in " .. selection.item.name .. "?")
+      if not confirmed then
+        return
+      end
+
+      local instance = status_instance()
+      local result
+      if partial and #hunks == 1 then
+        result = squash.restore_hunks(instance.root, selection.item.name, hunks, selection.item.diff, {
+          partial = true,
+          sel_from = hunks[1].from,
+          sel_to = hunks[1].to,
+        })
+      else
+        local raw_hunks = {}
+        for _, h in ipairs(hunks) do
+          table.insert(raw_hunks, h.hunk or h)
+        end
+        result = squash.restore_hunks(instance.root, selection.item.name, raw_hunks, selection.item.diff)
+      end
+
+      if result.success then
+        notification.info("Restored hunk(s): " .. selection.item.name)
+        refresh()
+      else
+        notification.error("Restore failed: " .. (result.error or "unknown"))
+      end
+      return
+    end
+  end
+
+  -- Fall back to file-level restore
   local names = collect_filenames(selection.items)
   if #names == 0 then
     return
