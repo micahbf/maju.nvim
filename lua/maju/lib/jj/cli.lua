@@ -215,6 +215,9 @@ local configurations = {
   op = config {
     subcommands = {
       log = config {
+        flags = {
+          no_graph = "--no-graph",
+        },
         options = {
           template = "-T",
           limit = "-n",

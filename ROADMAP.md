@@ -1,8 +1,8 @@
 # Roadmap
 
-## Current State: MVP Complete
+## Current State: Wave 3 Complete
 
-The MVP delivers a functional daily-driver workflow: status buffer with inline diffs, fold persistence, whole-file squash/unsquash/restore, change and bookmark popups, and help.
+Waves 1–3 are complete: status buffer with inline diffs, partial hunk operations, all popups (rebase, push, fetch, squash, split, undo, diff, resolve), log view with graph, change detail view, describe editor, and operation log buffer.
 
 ---
 
@@ -38,76 +38,78 @@ Priority fixes to make the MVP solid for daily use.
 ## Wave 2: More Popups & Operations
 
 ### Rebase Popup (`r`)
-- [ ] `d` — Rebase onto destination (`jj rebase -r @ -d <rev>`)
-- [ ] `A` — Rebase after revision (`jj rebase -r @ -A <rev>`)
-- [ ] `B` — Rebase before revision (`jj rebase -r @ -B <rev>`)
-- [ ] `=r` option for specifying which revision to rebase
+- [x] `d` — Rebase onto destination (`jj rebase -r @ -d <rev>`)
+- [x] `A` — Rebase after revision (`jj rebase -r @ -A <rev>`)
+- [x] `B` — Rebase before revision (`jj rebase -r @ -B <rev>`)
+- [x] `=r` option for specifying which revision to rebase
 
 ### Push Popup (`P`)
-- [ ] `p` — Push (`jj git push`)
-- [ ] `P` — Push all bookmarks (`jj git push --all`)
-- [ ] `--all`, `--deleted` switches
-- [ ] `--remote` option
+- [x] `p` — Push (`jj git push`)
+- [x] `P` — Push all bookmarks (`jj git push --all`)
+- [x] `--all`, `--deleted` switches
+- [x] `--remote` option
 
 ### Fetch Popup (`f`)
-- [ ] `f` — Fetch (`jj git fetch`)
-- [ ] `F` — Fetch all remotes (`jj git fetch --all-remotes`)
-- [ ] `--remote` option
+- [x] `f` — Fetch (`jj git fetch`)
+- [x] `F` — Fetch all remotes (`jj git fetch --all-remotes`)
+- [x] `--remote` option
 
 ### Undo Popup (`X`)
-- [ ] `u` — Undo (`jj op undo`)
-- [ ] `r` — Redo (`jj op undo` of the undo)
-- [ ] `l` — Open operation log view
+- [x] `u` — Undo (`jj op undo`)
+- [x] `r` — Redo (`jj op undo` of the undo)
+- [x] `l` — Open operation log view
 
 ### Squash Popup (`s`)
-- [ ] `s` — Squash to parent (with switches)
-- [ ] `S` — Squash into specific revision
-- [ ] `m` — Move changes to specific revision
-- [ ] `-i` interactive switch
+- [x] `s` — Squash to parent (with switches)
+- [x] `S` — Squash into specific revision
+- [x] `m` — Move changes to specific revision
+- [x] `-i` interactive switch
 
 ### Split Popup (`p`)
-- [ ] `s` — Split interactively (`jj split -i`)
-- [ ] `S` — Split at file level (select files to keep in first half)
+- [x] `s` — Split interactively (`jj split -i`)
+- [x] `S` — Split at file level (select files to keep in first half)
 
 ### Diff Popup (`d`)
-- [ ] `d` — View diff in diffview.nvim or vimdiff
-- [ ] `s` — Show stat
-- [ ] Options for controlling diff display
+- [x] `d` — View diff in floating buffer with diff filetype
+- [x] `s` — Show stat
+- [x] `=r` option for revision
 
 ### Resolve Popup
-- [ ] `r` — Resolve conflicts (`jj resolve`)
-- [ ] `--tool` option for choosing merge tool
+- [x] `r` — Resolve conflicts (`jj resolve`)
+- [x] `--tool` option for choosing merge tool
 
 ### Supporting Modules
-- [ ] `lib/jj/remote.lua` — push/fetch operations
-- [ ] `lib/jj/operation.lua` — undo, redo, op log parsing
-- [ ] `lib/jj/split.lua` — split operations
-- [ ] `lib/jj/conflict.lua` — conflict detection and info
-- [ ] `lib/jj/describe.lua` — multi-line description editing
+- [x] `lib/jj/remote.lua` — push/fetch operations
+- [x] `lib/jj/operation.lua` — undo, redo, op log parsing
+- [x] `lib/jj/rebase.lua` — rebase operations
+- [x] `lib/jj/split.lua` — split operations
+- [x] `lib/jj/conflict.lua` — conflict detection and resolution
+- [x] `lib/terminal.lua` — terminal runner for interactive commands
+- [x] `lib/jj/describe.lua` — multi-line description editing
 
 ---
 
 ## Wave 3: Additional Buffers
 
 ### Log View Buffer
-- [ ] Full log browser with graph visualization
-- [ ] Interactive operations: edit, rebase, bookmark from log entries
-- [ ] Customizable revset filter
-- [ ] Keyboard navigation between changes
+- [x] Full log browser with graph visualization
+- [x] Interactive operations: edit, rebase, bookmark from log entries
+- [x] Customizable revset filter
+- [x] Keyboard navigation between changes
 
 ### Change View Buffer
-- [ ] Single change detail view (all diffs, full description, metadata)
-- [ ] Open from status buffer recent entries or log view
+- [x] Single change detail view (all diffs, full description, metadata)
+- [x] Open from status buffer recent entries or log view
 
 ### Describe Editor Buffer
-- [ ] Dedicated buffer for editing change descriptions (like neogit's commit editor)
-- [ ] Multi-line editing with proper save/cancel
+- [x] Dedicated buffer for editing change descriptions (like neogit's commit editor)
+- [x] Multi-line editing with proper save/cancel
 - [ ] Template support
 
 ### Operation Log Buffer
-- [ ] View `jj op log` output
-- [ ] Restore to any operation point
-- [ ] Visual undo history
+- [x] View `jj op log` output
+- [x] Restore to any operation point
+- [x] Visual undo history
 
 ---
 

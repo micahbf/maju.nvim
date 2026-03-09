@@ -27,10 +27,11 @@ lua/maju/
       repository.lua                  Central state singleton + refresh
       status.lua                      Parse jj status output
       diff.lua                        Parse jj diff --git (unified diff)
-      log.lua                         Parse jj log (NUL-separated template)
+      log.lua                         Parse jj log (NUL-separated template, graph log)
       change.lua                      new, edit, describe, abandon, duplicate
       squash.lua                      squash, unsquash, restore (whole-file)
       bookmark.lua                    Bookmark CRUD
+      describe.lua                    Multi-line description read/write
       revset.lua                      Completion helpers
 
     ui/
@@ -49,6 +50,20 @@ lua/maju/
       init.lua                        Status buffer lifecycle (singleton)
       ui.lua                          Status buffer component tree
       actions.lua                     Keybinding handlers
+    log/
+      init.lua                        Log view buffer (graph, revset filter)
+      ui.lua                          Log view component tree
+      actions.lua                     Log view actions (edit, rebase, open change)
+    change/
+      init.lua                        Change detail view (single change)
+      ui.lua                          Change view component tree
+      actions.lua                     Change view actions
+    describe/
+      init.lua                        Describe editor (multi-line, :w saves)
+    oplog/
+      init.lua                        Operation log buffer
+      ui.lua                          Operation log component tree
+      actions.lua                     Operation log actions (restore)
 
   popups/
     change/init.lua + actions.lua     new, edit, describe, abandon, duplicate

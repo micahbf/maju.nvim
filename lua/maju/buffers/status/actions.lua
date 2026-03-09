@@ -105,8 +105,21 @@ function M.toggle(buffer)
   buffer.ui:update()
 end
 
--- Go to file under cursor
+-- Go to file under cursor, or open change view for recent entries
 function M.goto_file(buffer)
+  -- Check if cursor is on a recent entry (has change_id but no filename)
+  local section = buffer.ui:get_current_section()
+  if section and section.options and section.options.section == "recent" then
+    local change_id = buffer.ui:get_change_under_cursor()
+    if change_id then
+      local instance = status_instance()
+      if instance then
+        require("maju.buffers.change").open(instance.root, change_id)
+      end
+      return
+    end
+  end
+
   local component = buffer.ui:get_hunk_or_filename_under_cursor()
   if not component then
     return
@@ -474,6 +487,50 @@ end
 -- Open bookmark popup
 function M.bookmark_popup()
   require("maju.popups.bookmark").create()
+end
+
+-- Open squash popup
+function M.squash_popup()
+  require("maju.popups.squash").create()
+end
+
+-- Open rebase popup
+function M.rebase_popup()
+  require("maju.popups.rebase").create()
+end
+
+-- Open push popup
+function M.push_popup()
+  require("maju.popups.push").create()
+end
+
+-- Open fetch popup
+function M.fetch_popup()
+  require("maju.popups.fetch").create()
+end
+
+-- Open undo popup
+function M.undo_popup()
+  require("maju.popups.undo").create()
+end
+
+-- Open diff popup
+function M.diff_popup()
+  require("maju.popups.diff").create()
+end
+
+-- Open split popup
+function M.split_popup()
+  require("maju.popups.split").create()
+end
+
+-- Open log view
+function M.log_view()
+  local instance = status_instance()
+  if not instance then
+    return
+  end
+  require("maju.buffers.log").open(instance.root)
 end
 
 -- Open help popup

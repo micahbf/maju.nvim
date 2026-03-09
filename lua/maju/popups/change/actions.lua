@@ -52,24 +52,18 @@ function M.edit_change(popup)
 end
 
 function M.describe_change(popup)
-  local repo = require("maju.lib.jj.repository")
-  local current_desc = ""
-  if repo.state.working_copy then
-    current_desc = repo.state.working_copy.description or ""
-  end
-
-  local message = input.get_user_input("Describe @", { default = current_desc })
-  if not message then
+  local jj = require("maju.lib.jj.cli")
+  local root = jj._root
+  if not root then
+    notification.error("No repository root")
     return
   end
 
-  local result = change.describe("@", message)
-  if result.success then
-    notification.info("Description updated")
-    refresh_status()
-  else
-    notification.error("Failed: " .. (result.error or "unknown error"))
-  end
+  require("maju.buffers.describe").open(root, "@", {
+    on_complete = function()
+      refresh_status()
+    end,
+  })
 end
 
 function M.abandon_change(popup)

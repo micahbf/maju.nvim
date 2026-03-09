@@ -139,6 +139,20 @@ function M.setup()
     MajuFloatHeaderHighlight     = { bg = p.bg2, fg = p.cyan, bold = true, ctermfg = 6 },
     MajuSubtleText               = { link = "Comment" },
 
+    -- Graph
+    MajuGraphCurrent             = { fg = p.green, bold = true, ctermfg = 2 },
+    MajuGraphImmutable           = { fg = p.cyan, bold = true, ctermfg = 6 },
+    MajuGraphNormal              = { fg = p.grey, ctermfg = 7 },
+    MajuGraphEdge                = { fg = p.grey, ctermfg = 7 },
+
+    -- Operation log
+    MajuOpId                     = { fg = p.cyan, bold = true, ctermfg = 6 },
+    MajuOpCurrent                = { fg = p.green, bold = true, ctermfg = 2 },
+    MajuTimestamp                = { link = "MajuSubtleText" },
+
+    -- Describe editor
+    MajuDescribeComment          = { link = "Comment" },
+
     -- Popup
     MajuPopupSectionTitle        = { link = "Function" },
     MajuPopupBranchName          = { link = "String" },
